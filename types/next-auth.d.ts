@@ -1,4 +1,5 @@
 import "next-auth"
+import { UserRole } from "./models"
 
 declare module "next-auth" {
   interface Session {
@@ -6,6 +7,7 @@ declare module "next-auth" {
       id: string
       email: string
       name?: string | null
+      role: UserRole
       image?: string | null
     }
   }
@@ -14,6 +16,7 @@ declare module "next-auth" {
     id: string
     email: string
     name?: string
+    role: UserRole
   }
 }
 
@@ -21,5 +24,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string
     email: string
+    role: UserRole
   }
 }

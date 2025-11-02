@@ -1,25 +1,24 @@
 import { CosmosClient, SqlParameter } from "@azure/cosmos"
 
-if (!process.env.COSMOS_DB_ENDPOINT) {
-  throw new Error("COSMOS_DB_ENDPOINT is not defined in environment variables")
-}
-
-if (!process.env.COSMOS_DB_KEY) {
-  throw new Error("COSMOS_DB_KEY is not defined in environment variables")
-}
-
-const endpoint = process.env.COSMOS_DB_ENDPOINT
-const key = process.env.COSMOS_DB_KEY
+const endpoint = process.env.COSMOS_DB_ENDPOINT || ""
+const key = process.env.COSMOS_DB_KEY || ""
 const databaseId = process.env.COSMOS_DB_DATABASE_ID || "prompty-db"
 
-// Create Cosmos DB client
-export const cosmosClient = new CosmosClient({
-  endpoint,
-  key,
-})
+// Create Cosmos DB client only if credentials are provided
+let cosmosClient: CosmosClient | null = null
+
+if (endpoint && key) {
+  cosmosClient = new CosmosClient({
+    endpoint,
+    key,
+  })
+}
 
 // Database and container references
 export async function getDatabase() {
+  if (!cosmosClient) {
+    throw new Error("CosmosDB client not initialized. Please set COSMOS_DB_ENDPOINT and COSMOS_DB_KEY environment variables.")
+  }
   const { database } = await cosmosClient.databases.createIfNotExists({
     id: databaseId,
   })
@@ -51,7 +50,7 @@ export async function queryItems<T>(
   return resources
 }
 
-export async function createItem<T extends Record<string, unknown>>(
+export async function createItem<T extends { id: string }>(
   containerId: string,
   item: T
 ) {
@@ -60,7 +59,7 @@ export async function createItem<T extends Record<string, unknown>>(
   return resource
 }
 
-export async function updateItem<T extends Record<string, unknown>>(
+export async function updateItem<T extends { id: string }>(
   containerId: string,
   id: string,
   item: T
