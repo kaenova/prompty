@@ -192,3 +192,90 @@ export async function getAllUsers(): Promise<User[]> {
     return []
   }
 }
+
+/**
+ * Update user role (admin only)
+ */
+export async function updateUserRole(
+  userId: string,
+  newRole: "admin" | "user",
+  adminId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Verify caller is admin
+    const admin = await queryItems<User>(
+      CONTAINER_NAMES.USERS,
+      "SELECT * FROM c WHERE c.id = @id AND c.role = @role",
+      [
+        { name: "@id", value: adminId },
+        { name: "@role", value: "admin" },
+      ]
+    )
+
+    if (admin.length === 0) {
+      return { success: false, error: "Only admins can update user roles" }
+    }
+
+    // Get the user to update
+    const users = await queryItems<User>(
+      CONTAINER_NAMES.USERS,
+      "SELECT * FROM c WHERE c.id = @id",
+      [{ name: "@id", value: userId }]
+    )
+
+    if (users.length === 0) {
+      return { success: false, error: "User not found" }
+    }
+
+    const user = users[0]
+    const { updateItem } = await import("@/lib/cosmosdb")
+    
+    await updateItem(CONTAINER_NAMES.USERS, userId, {
+      ...user,
+      role: newRole,
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error updating user role:", error)
+    return { success: false, error: "Failed to update user role" }
+  }
+}
+
+/**
+ * Delete user (admin only)
+ */
+export async function deleteUser(
+  userId: string,
+  adminId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Verify caller is admin
+    const admin = await queryItems<User>(
+      CONTAINER_NAMES.USERS,
+      "SELECT * FROM c WHERE c.id = @id AND c.role = @role",
+      [
+        { name: "@id", value: adminId },
+        { name: "@role", value: "admin" },
+      ]
+    )
+
+    if (admin.length === 0) {
+      return { success: false, error: "Only admins can delete users" }
+    }
+
+    // Prevent deleting the last admin
+    if (userId === adminId) {
+      return { success: false, error: "Cannot delete your own account" }
+    }
+
+    const { deleteItem } = await import("@/lib/cosmosdb")
+    
+    await deleteItem(CONTAINER_NAMES.USERS, userId)
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error deleting user:", error)
+    return { success: false, error: "Failed to delete user" }
+  }
+}

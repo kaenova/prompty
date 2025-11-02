@@ -6,16 +6,19 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { getProjectsForUser, createProject } from "@/lib/server-actions/projects"
-import { createUserInvite } from "@/lib/server-actions/users"
-import { Project } from "@/types/models"
+import { createUserInvite, getAllUsers, updateUserRole, deleteUser } from "@/lib/server-actions/users"
+import { Project, User } from "@/types/models"
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewProject, setShowNewProject] = useState(false)
   const [showInviteUser, setShowInviteUser] = useState(false)
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const [newProjectData, setNewProjectData] = useState({
     name: "",
     description: "",
@@ -37,6 +40,13 @@ export default function DashboardPage() {
       if (session?.user?.id) {
         const userProjects = await getProjectsForUser(session.user.id)
         setProjects(userProjects)
+        
+        // Load users if admin
+        if (session.user.role === "admin") {
+          const allUsers = await getAllUsers()
+          setUsers(allUsers)
+        }
+        
         setLoading(false)
       }
     }
@@ -80,6 +90,34 @@ export default function DashboardPage() {
     }
   }
 
+  const handleUpdateUserRole = async (userId: string, newRole: "admin" | "user") => {
+    if (!session?.user?.id) return
+    
+    setUpdatingUserId(userId)
+    const result = await updateUserRole(userId, newRole, session.user.id)
+    setUpdatingUserId(null)
+
+    if (result.success) {
+      const allUsers = await getAllUsers()
+      setUsers(allUsers)
+    }
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!session?.user?.id) return
+    
+    if (!confirm("Are you sure you want to delete this user?")) return
+
+    setDeletingUserId(userId)
+    const result = await deleteUser(userId, session.user.id)
+    setDeletingUserId(null)
+
+    if (result.success) {
+      const allUsers = await getAllUsers()
+      setUsers(allUsers)
+    }
+  }
+
   const handleSignout = async () => {
     await signOut()
     router.push("/auth/signin")
@@ -117,19 +155,9 @@ export default function DashboardPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">My Projects</h2>
-            <div className="flex gap-2">
-              {session.user.role === "admin" && (
-                <Button
-                  onClick={() => setShowInviteUser(true)}
-                  variant="outline"
-                >
-                  Invite User
-                </Button>
-              )}
-              <Button onClick={() => setShowNewProject(true)}>
-                New Project
-              </Button>
-            </div>
+            <Button onClick={() => setShowNewProject(true)}>
+              New Project
+            </Button>
           </div>
 
           {/* New Project Form */}
@@ -181,62 +209,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Invite User Form */}
-          {showInviteUser && (
-            <div className="p-6 border rounded-lg space-y-4 bg-card">
-              <h3 className="font-semibold">Invite User</h3>
-              <form onSubmit={handleCreateInvite} className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Name</label>
-                  <input
-                    type="text"
-                    value={inviteData.name}
-                    onChange={(e) =>
-                      setInviteData({ ...inviteData, name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded-md bg-background mt-1"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Role</label>
-                  <select
-                    value={inviteData.role}
-                    onChange={(e) =>
-                      setInviteData({
-                        ...inviteData,
-                        role: e.target.value as "admin" | "user",
-                      })
-                    }
-                    className="w-full px-3 py-2 border rounded-md bg-background mt-1"
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit">Generate Invite Link</Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowInviteUser(false)
-                      setInviteLink("")
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-                {inviteLink && (
-                  <div className="p-3 bg-muted rounded border">
-                    <p className="text-sm font-medium mb-2">Invite Link:</p>
-                    <p className="text-sm break-all">{inviteLink}</p>
-                  </div>
-                )}
-              </form>
-            </div>
-          )}
-
           {/* Projects List */}
           <div className="space-y-4">
             {projects.length === 0 ? (
@@ -265,6 +237,144 @@ export default function DashboardPage() {
               ))
             )}
           </div>
+
+          {/* Users Management Section - Admin Only */}
+          {session.user.role === "admin" && (
+            <>
+              <div className="mt-12 pt-8 border-t">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Users Management</h2>
+                  <Button
+                    onClick={() => setShowInviteUser(true)}
+                    variant="outline"
+                  >
+                    Invite User
+                  </Button>
+                </div>
+              </div>
+
+              {/* Invite User Form */}
+              {showInviteUser && (
+                <div className="p-6 border rounded-lg space-y-4 bg-card mb-6">
+                  <h3 className="font-semibold">Invite User</h3>
+                  <form onSubmit={handleCreateInvite} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Name</label>
+                      <input
+                        type="text"
+                        value={inviteData.name}
+                        onChange={(e) =>
+                          setInviteData({ ...inviteData, name: e.target.value })
+                        }
+                        className="w-full px-3 py-2 border rounded-md bg-background mt-1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Role</label>
+                      <select
+                        value={inviteData.role}
+                        onChange={(e) =>
+                          setInviteData({
+                            ...inviteData,
+                            role: e.target.value as "admin" | "user",
+                          })
+                        }
+                        className="w-full px-3 py-2 border rounded-md bg-background mt-1"
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button type="submit">Generate Invite Link</Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowInviteUser(false)
+                          setInviteLink("")
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    {inviteLink && (
+                      <div className="p-3 bg-muted rounded border">
+                        <p className="text-sm font-medium mb-2">Invite Link:</p>
+                        <p className="text-sm break-all">{inviteLink}</p>
+                      </div>
+                    )}
+                  </form>
+                </div>
+              )}
+
+              {/* Users List */}
+              <div className="space-y-4">
+                {users.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    No users yet.
+                  </p>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-sm font-medium">Name</th>
+                          <th className="px-6 py-3 text-left text-sm font-medium">Email</th>
+                          <th className="px-6 py-3 text-left text-sm font-medium">Role</th>
+                          <th className="px-6 py-3 text-left text-sm font-medium">Created</th>
+                          <th className="px-6 py-3 text-left text-sm font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((user) => (
+                          <tr key={user.id} className="border-t hover:bg-muted/30">
+                            <td className="px-6 py-4 text-sm">{user.name}</td>
+                            <td className="px-6 py-4 text-sm">{user.email}</td>
+                            <td className="px-6 py-4 text-sm">
+                              {user.id === session.user.id ? (
+                                <span className="px-2 py-1 bg-primary/10 rounded text-xs font-medium">
+                                  {user.role} (You)
+                                </span>
+                              ) : (
+                                <select
+                                  value={user.role}
+                                  onChange={(e) =>
+                                    handleUpdateUserRole(user.id, e.target.value as "admin" | "user")
+                                  }
+                                  disabled={updatingUserId === user.id}
+                                  className="px-2 py-1 border rounded text-sm bg-background"
+                                >
+                                  <option value="user">User</option>
+                                  <option value="admin">Admin</option>
+                                </select>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">
+                              {new Date(user.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {user.id !== session.user.id && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  disabled={deletingUserId === user.id}
+                                >
+                                  {deletingUserId === user.id ? "Deleting..." : "Delete"}
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>
