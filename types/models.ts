@@ -47,6 +47,7 @@ export interface ProjectApiKey {
   projectId: string
   userId: string // who created it
   apiKey: string
+  description?: string
   createdAt: string
 }
 

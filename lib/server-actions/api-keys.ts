@@ -10,7 +10,8 @@ import { checkProjectPermission } from "./projects"
  */
 export async function createProjectApiKey(
   projectId: string,
-  userId: string
+  userId: string,
+  description?: string
 ): Promise<{ success: boolean; apiKey?: string; error?: string }> {
   try {
     // Check permission (owner or editor)
@@ -25,6 +26,7 @@ export async function createProjectApiKey(
       projectId,
       userId,
       apiKey,
+      description,
       createdAt: new Date().toISOString(),
     }
 

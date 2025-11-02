@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { 
   getApiKeysForProject, 
   createProjectApiKey, 
   deleteApiKey 
 } from "@/lib/server-actions/api-keys"
+import { getUserById } from "@/lib/server-actions/users"
 import { ProjectApiKey } from "@/types/models"
 
 interface ApiKeysTabProps {
@@ -26,15 +27,48 @@ export function ApiKeysTab({
 }: ApiKeysTabProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
+  const [creatorNames, setCreatorNames] = useState<Record<string, string>>({})
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false)
+  const [keyDescription, setKeyDescription] = useState("")
+  const [generatedKey, setGeneratedKey] = useState<ProjectApiKey | null>(null)
+  const [showGeneratedKey, setShowGeneratedKey] = useState(false)
+
+  // Fetch creator names for API keys
+  useEffect(() => {
+    const fetchCreatorNames = async () => {
+      const names: Record<string, string> = {}
+      
+      for (const key of apiKeys) {
+        if (!names[key.userId]) {
+          const user = await getUserById(key.userId)
+          names[key.userId] = user?.name || "Unknown"
+        }
+      }
+      
+      setCreatorNames(names)
+    }
+
+    if (apiKeys.length > 0) {
+      fetchCreatorNames()
+    }
+  }, [apiKeys])
 
   const handleCreateApiKey = async () => {
     setIsCreating(true)
-    const result = await createProjectApiKey(projectId, userId)
+    const result = await createProjectApiKey(projectId, userId, keyDescription)
     setIsCreating(false)
     
     if (result.success) {
       const projectApiKeys = await getApiKeysForProject(projectId)
+      // Find the newly created key
+      const newKey = projectApiKeys.find(k => k.apiKey === result.apiKey)
+      if (newKey) {
+        setGeneratedKey(newKey)
+        setShowGeneratedKey(true)
+      }
       onApiKeysChange(projectApiKeys)
+      setShowDescriptionModal(false)
+      setKeyDescription("")
     }
   }
 
@@ -97,11 +131,85 @@ response = openai.ChatCompletion.create(
       {canEdit && (
         <Button  
           className="w-full"
-          onClick={handleCreateApiKey}
+          onClick={() => setShowDescriptionModal(true)}
           disabled={isCreating}
         >
-          {isCreating ? "Generating..." : "Generate New API Key"}
+          Generate New API Key
         </Button>
+      )}
+
+      {/* Description Modal */}
+      {showDescriptionModal && (
+        <div className="p-6 border rounded-lg space-y-4 bg-card">
+          <h3 className="font-semibold">Generate New API Key</h3>
+          <div>
+            <label className="text-sm font-medium">Description (Optional)</label>
+            <input
+              type="text"
+              value={keyDescription}
+              onChange={(e) => setKeyDescription(e.target.value)}
+              placeholder="e.g., Production API Key, Mobile App Key..."
+              className="w-full px-3 py-2 border rounded-md bg-background mt-1"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCreateApiKey}
+              disabled={isCreating}
+            >
+              {isCreating ? "Generating..." : "Generate"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDescriptionModal(false)
+                setKeyDescription("")
+              }}
+              disabled={isCreating}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Generated Key Display */}
+      {showGeneratedKey && generatedKey && (
+        <div className="p-6 border border-green-200 rounded-lg space-y-4 bg-green-50 dark:bg-green-950">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-semibold text-green-900 dark:text-green-100 mb-2">✓ API Key Generated Successfully</h3>
+              <p className="text-sm text-green-800 dark:text-green-200 mb-3">
+                Save this key somewhere safe. You won&apos;t be able to see it again.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowGeneratedKey(false)}
+            >
+              Done
+            </Button>
+          </div>
+          <div>
+            <p className="text-xs text-green-700 dark:text-green-300 mb-1">Your API Key:</p>
+            <code className="text-sm bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-100 px-3 py-2 rounded block font-mono break-all">
+              {generatedKey.apiKey}
+            </code>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-xs text-green-700 dark:text-green-300">Description</p>
+              <p className="font-medium text-green-900 dark:text-green-100">
+                {generatedKey.description || "No description"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-green-700 dark:text-green-300">Project ID</p>
+              <p className="font-medium text-green-900 dark:text-green-100">{projectId}</p>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="space-y-4">
@@ -113,26 +221,43 @@ response = openai.ChatCompletion.create(
           apiKeys.map((key) => (
             <div
               key={key.id}
-              className="p-4 border rounded-lg flex justify-between items-center"
+              className="p-6 border rounded-lg space-y-4 bg-card"
             >
-              <div className="flex-1">
-                <code className="text-sm bg-muted px-2 py-1 rounded">
-                  {key.apiKey}
-                </code>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Created: {new Date(key.createdAt).toLocaleDateString()}
-                </p>
+              <div className="flex justify-between items-start">
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {key.description || <span className="italic text-muted-foreground">No description</span>}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Created By</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {creatorNames[key.userId] || "Loading..."}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Created At</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {new Date(key.createdAt).toLocaleDateString()} {new Date(key.createdAt).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {canEdit && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteApiKey(key.id)}
+                    disabled={isDeletingId === key.id}
+                    className="ml-4"
+                  >
+                    {isDeletingId === key.id ? "Deleting..." : "Delete"}
+                  </Button>
+                )}
               </div>
-              {canEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeleteApiKey(key.id)}
-                  disabled={isDeletingId === key.id}
-                >
-                  {isDeletingId === key.id ? "Deleting..." : "Delete"}
-                </Button>
-              )}
             </div>
           ))
         )}
