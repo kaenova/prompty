@@ -329,6 +329,45 @@ export default function AgentPage() {
               )}
             </div>
           </div>
+
+          {/* Python SDK Example */}
+          <div className="p-4 border border-border bg-card rounded-lg">
+            <h3 className="font-semibold text-foreground mb-3">Python SDK Example</h3>
+            
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Use this code to fetch the active prompt for <span className="font-medium text-foreground">{`"${agent.name}"`}</span> agent:
+              </p>
+              <pre className="bg-muted text-foreground p-3 rounded text-xs overflow-x-auto border border-border">
+                <code>{`from prompty import PromptyClient
+
+# Initialize the client
+client = PromptyClient(
+    base_url='${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}',
+    project_id='${projectId}',
+    api_key='pk_your_api_key_here'  # Replace with your actual API key
+)
+
+# Get the active prompt for this agent
+prompt = client.get_prompt('${agent.name}')
+print(prompt)
+
+# Use with OpenAI or other AI services
+import openai
+
+response = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": "Your user message here"}
+    ]
+)`}</code>
+              </pre>
+              <p className="text-xs text-muted-foreground">
+                📦 Install SDK: <code className="bg-muted border border-border px-1.5 py-0.5 rounded text-foreground">pip install kaenova-prompty</code>
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     </div>
