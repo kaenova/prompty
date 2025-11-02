@@ -1,0 +1,101 @@
+name: Build and Push Docker Image to Docker Hub
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'types/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.ts'
+      - 'tsconfig.json'
+      - 'tailwind.config.ts'
+      - 'postcss.config.mjs'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/build-docker.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKER_USERNAME }}/prompty
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: ${{ secrets.DOCKER_USERNAME }}/prompty
+          short-description: 'Real-time agent prompt management platform'
+          description: |
+            # Prompty
+
+            Real-time agent prompt management platform with collaborative features and Python SDK integration.
+
+            ## Features
+            - 🤖 Agent Management - Create and manage AI agents with customizable prompts
+            - ⚡ Real-time Updates - Update prompts in real-time via Python SDK
+            - 👥 Team Collaboration - Share projects with role-based permissions
+            - 🔐 Secure API Keys - Manage API keys for secure client access
+            - 🎯 Prompt Activation - Activate specific prompts for production use
+
+            ## Usage
+
+            ```bash
+            docker run -d \
+              -p 3000:3000 \
+              -e NEXTAUTH_URL=http://localhost:3000 \
+              -e NEXTAUTH_SECRET=your-secret-key \
+              -e COSMOS_DB_ENDPOINT=https://your-account.documents.azure.com:443/ \
+              -e COSMOS_DB_KEY=your-key \
+              -e COSMOS_DB_DATABASE_ID=prompty-db \
+              ${{ secrets.DOCKER_USERNAME }}/prompty:latest
+            ```
+
+            ## Documentation
+
+            For more information, visit: https://github.com/kaenova/prompty

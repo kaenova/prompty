@@ -72,24 +72,6 @@ jobs:
           cd python-sdk
           python -m twine upload dist/* --non-interactive
 
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: python-sdk-v${{ steps.version.outputs.version }}
-          release_name: Python SDK Release - ${{ steps.version.outputs.version }}
-          body: |
-            # Python SDK Release
-            
-            **Version:** ${{ steps.version.outputs.version }}
-            
-            Published to PyPI as `prompty-sdk==${{ steps.version.outputs.version }}`
-            
-            Changes in `python-sdk/` directory committed on ${{ github.event.head_commit.timestamp }}
-          draft: false
-          prerelease: false
-
       - name: Commit version update
         run: |
           git config --local user.email "action@github.com"
