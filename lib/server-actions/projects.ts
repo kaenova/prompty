@@ -172,3 +172,82 @@ export async function deleteProject(
     return { success: false, error: "Failed to delete project" }
   }
 }
+
+/**
+ * Update member permission in project
+ */
+export async function updateMemberPermission(
+  projectId: string,
+  userId: string,
+  memberId: string,
+  newPermission: "owner" | "editor" | "viewer"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Check if current user is owner
+    const currentPermission = await checkProjectPermission(projectId, userId)
+    if (currentPermission !== "owner") {
+      return { success: false, error: "Only project owners can update member permissions" }
+    }
+
+    // Cannot change own permission
+    if (userId === memberId) {
+      return { success: false, error: "Cannot change your own permission" }
+    }
+
+    const project = await getProjectById(projectId)
+    if (!project) {
+      return { success: false, error: "Project not found" }
+    }
+
+    if (!project.permissions[memberId]) {
+      return { success: false, error: "Member not found in project" }
+    }
+
+    project.permissions[memberId] = newPermission
+    await updateItem(CONTAINER_NAMES.PROJECTS, projectId, project)
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error updating member permission:", error)
+    return { success: false, error: "Failed to update member permission" }
+  }
+}
+
+/**
+ * Remove member from project
+ */
+export async function removeMemberFromProject(
+  projectId: string,
+  userId: string,
+  memberId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Check if current user is owner
+    const currentPermission = await checkProjectPermission(projectId, userId)
+    if (currentPermission !== "owner") {
+      return { success: false, error: "Only project owners can remove members" }
+    }
+
+    // Cannot remove yourself
+    if (userId === memberId) {
+      return { success: false, error: "Cannot remove yourself from the project" }
+    }
+
+    const project = await getProjectById(projectId)
+    if (!project) {
+      return { success: false, error: "Project not found" }
+    }
+
+    if (!project.permissions[memberId]) {
+      return { success: false, error: "Member not found in project" }
+    }
+
+    delete project.permissions[memberId]
+    await updateItem(CONTAINER_NAMES.PROJECTS, projectId, project)
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error removing member from project:", error)
+    return { success: false, error: "Failed to remove member from project" }
+  }
+}

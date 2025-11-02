@@ -122,8 +122,7 @@ In project settings:
 
 Install the SDK:
 ```bash
-cd python-sdk
-pip install -e .
+pip install kaenova-prompty
 ```
 
 Use in your Python application:

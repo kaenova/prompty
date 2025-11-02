@@ -180,6 +180,23 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 }
 
 /**
+ * Get user by ID
+ */
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const users = await queryItems<User>(
+      CONTAINER_NAMES.USERS,
+      "SELECT * FROM c WHERE c.id = @id",
+      [{ name: "@id", value: userId }]
+    )
+    return users.length > 0 ? users[0] : null
+  } catch (error) {
+    console.error("Error getting user:", error)
+    return null
+  }
+}
+
+/**
  * Get all users (admin only)
  */
 export async function getAllUsers(): Promise<User[]> {
