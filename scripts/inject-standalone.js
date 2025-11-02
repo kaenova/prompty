@@ -30,8 +30,9 @@ if (/output\s*:\s*["']standalone["']/.test(config)) {
 
 let injected = false;
 
-// Pattern 1: const/let/var nextConfig = { ... }
-const reConst = /([const|let|var]+)\s+([A-Za-z0-9_]+)\s*=[^\{]*\{/m;
+// Pattern 1: const/let/var nextConfig (with optional type annotation) = { ... }
+// Matches: const nextConfig = { or const nextConfig: NextConfig = {
+const reConst = /([const|let|var]+)\s+([A-Za-z0-9_]+)(\s*:\s*[A-Za-z0-9_<>,\s]+)?\s*=[^\{]*\{/m;
 if (reConst.test(config)) {
   config = config.replace(reConst, (m) => m + '\n  output: "standalone",');
   console.log('✓ Injected into: const/let/var declaration');
