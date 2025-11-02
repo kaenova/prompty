@@ -1,5 +1,7 @@
 import NextAuth, { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { getUserByEmail } from "@/lib/server-actions/users"
+import { verifyPassword } from "@/lib/auth"
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -10,18 +12,30 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // TODO: Implement your authentication logic here
-        // This is a placeholder - replace with actual authentication
-        if (credentials?.email && credentials?.password) {
-          // Replace this with actual user validation against CosmosDB
-          const user = {
-            id: "1",
-            email: credentials.email,
-            name: "User"
-          }
-          return user
+        if (!credentials?.email || !credentials?.password) {
+          return null
         }
-        return null
+
+        // Get user from database
+        const user = await getUserByEmail(credentials.email)
+        
+        if (!user) {
+          return null
+        }
+
+        // Verify password
+        const isValid = verifyPassword(credentials.password, user.password)
+        
+        if (!isValid) {
+          return null
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        }
       }
     })
   ],
@@ -40,6 +54,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.email = user.email
+        token.role = user.role
       }
       return token
     },
@@ -47,6 +62,7 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.email = token.email as string
+        session.user.role = token.role
       }
       return session
     }
