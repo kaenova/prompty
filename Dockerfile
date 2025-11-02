@@ -12,26 +12,41 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Add standalone output mode to next.config.ts
-RUN node -e "
-  const fs = require('fs');
-  const path = require('path');
-  const configPath = path.join(process.cwd(), 'next.config.ts');
-  let config = fs.readFileSync(configPath, 'utf8');
-  
-  // Check if output: 'standalone' already exists
-  if (!config.includes('output:') || !config.includes('standalone')) {
-    // Add output: 'standalone' to the config object
-    config = config.replace(
-      /const nextConfig[^{]*{/,
-      match => match + '\n  output: \"standalone\",'
-    );
-    fs.writeFileSync(configPath, config);
-    console.log('Added output: \"standalone\" to next.config.ts');
-  } else {
-    console.log('output: \"standalone\" already exists in next.config.ts');
-  }
-"
+# Add standalone output mode to next.config.ts (single-line to avoid Dockerfile parse issues)
+RUN node -e 'const fs=require("fs"),path=require("path");const p=path.join(process.cwd(),"next.config.ts");if(!fs.existsSync(p)){console.log("next.config.ts not found");process.exit(0)}let s=fs.readFileSync(p,"utf8");if(/output\s*:\s*["\']standalone["\']/.test(s)){console.log("output already present");process.exit(0)}
+// Try patterns: const nextConfig = { ... }, module.exports = { ... }, export default { ... }, export default name; (name = { ... })
+const tried=[];
+// 1) const/let/var nextConfig = {
+const reConst=/([const|let|var]+)\s+([A-Za-z0-9_]+)\s*=[^\{]*\{/m;
+if(reConst.test(s)){
+    s=s.replace(reConst, (m,decl,name)=>`${m}\n  output: \"standalone\",`);
+    tried.push('const-like');
+}
+// 2) module.exports = {
+const reModule=/module\.exports\s*=\s*\{/m;
+if(reModule.test(s) && !tried.includes('module')){
+    s=s.replace(reModule, m=>m+"\n  output: \"standalone\",");
+    tried.push('module');
+}
+// 3) export default { ... }
+const reExportObj=/export\s+default\s*\{\s*/m;
+if(reExportObj.test(s) && !tried.includes('exportObj')){
+    s=s.replace(reExportObj, m=>m+"\n  output: \"standalone\",");
+    tried.push('exportObj');
+}
+// 4) export default identifier; try to find identifier declaration
+const reExportId=/export\s+default\s+([A-Za-z0-9_]+)/m;
+const mId=s.match(reExportId);
+if(mId && !tried.includes('exportId')){
+    const id=mId[1];
+    // find const id = { ... }
+    const reIdDecl=new RegExp('([const|let|var]+)\\s+'+id+'\\s*=[^\\{]*\\{','m');
+    if(reIdDecl.test(s)){
+        s=s.replace(reIdDecl, m=>m+"\n  output: \"standalone\",");
+        tried.push('exportId');
+    }
+}
+if(tried.length>0){fs.writeFileSync(p,s);console.log('Injected output into next.config.ts patterns: '+tried.join(','))}else{console.log('No matching pattern to inject output into next.config.ts')}'
 
 # Build the application
 RUN npm run build
