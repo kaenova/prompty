@@ -9,11 +9,12 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
+# Copy source code and build scripts
 COPY . .
+COPY scripts/inject-standalone.js /tmp/inject-standalone.js
 
-# Add standalone output mode to next.config.ts
-RUN node -e 'const fs=require("fs"),path=require("path");const p=path.join(process.cwd(),"next.config.ts");if(!fs.existsSync(p)){console.log("next.config.ts not found");process.exit(0)}let s=fs.readFileSync(p,"utf8");if(/output\s*:\s*["\']standalone["\']/.test(s)){console.log("output already present");process.exit(0)}const tried=[];const reConst=/([const|let|var]+)\s+([A-Za-z0-9_]+)\s*=[^\{]*\{/m;if(reConst.test(s)){s=s.replace(reConst,(m,decl,name)=>`${m}\n  output: "standalone",`);tried.push("const-like")}const reModule=/module\.exports\s*=\s*\{/m;if(reModule.test(s)&&!tried.includes("module")){s=s.replace(reModule,m=>m+"\n  output: \"standalone\",");tried.push("module")}const reExportObj=/export\s+default\s*\{\s*/m;if(reExportObj.test(s)&&!tried.includes("exportObj")){s=s.replace(reExportObj,m=>m+"\n  output: \"standalone\",");tried.push("exportObj")}const reExportId=/export\s+default\s+([A-Za-z0-9_]+)/m;const mId=s.match(reExportId);if(mId&&!tried.includes("exportId")){const id=mId[1];const reIdDecl=new RegExp("([const|let|var]+)\\\\s+"+id+"\\\\s*=[^\\\\{]*\\\\{","m");if(reIdDecl.test(s)){s=s.replace(reIdDecl,m=>m+"\n  output: \"standalone\",");tried.push("exportId")}}if(tried.length>0){fs.writeFileSync(p,s);console.log("Injected output into next.config.ts patterns: "+tried.join(","))}else{console.log("No matching pattern to inject output into next.config.ts")}'
+# Inject standalone output mode into next.config.ts
+RUN node /tmp/inject-standalone.js
 
 # Build the application
 RUN npm run build
