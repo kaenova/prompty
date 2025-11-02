@@ -1,12 +1,10 @@
 "use server"
 
-import { queryItems, createItem, updateItem, deleteItem } from "@/lib/cosmosdb"
+import { queryItems, createItem, updateItem, deleteItem, CONTAINER_NAMES } from "@/lib/cosmosdb"
 import { AgentPrompt } from "@/types/models"
 import { generateId } from "@/lib/auth"
 import { getAgentById } from "./agents"
 import { checkProjectPermission } from "./projects"
-
-const PROMPT_CONTAINER = "agent_prompts"
 
 /**
  * Create a new prompt
@@ -35,7 +33,7 @@ export async function createPrompt(
       createdAt: new Date().toISOString(),
     }
 
-    await createItem(PROMPT_CONTAINER, prompt)
+    await createItem(CONTAINER_NAMES.AGENT_PROMPTS, prompt)
     return { success: true, promptId: prompt.id }
   } catch (error) {
     console.error("Error creating prompt:", error)
@@ -49,7 +47,7 @@ export async function createPrompt(
 export async function getPromptsForAgent(agentId: string): Promise<AgentPrompt[]> {
   try {
     const prompts = await queryItems<AgentPrompt>(
-      PROMPT_CONTAINER,
+      CONTAINER_NAMES.AGENT_PROMPTS,
       "SELECT * FROM c WHERE c.agentId = @agentId ORDER BY c.createdAt DESC",
       [{ name: "@agentId", value: agentId }]
     )
@@ -66,7 +64,7 @@ export async function getPromptsForAgent(agentId: string): Promise<AgentPrompt[]
 export async function getPromptById(promptId: string): Promise<AgentPrompt | null> {
   try {
     const prompts = await queryItems<AgentPrompt>(
-      PROMPT_CONTAINER,
+      CONTAINER_NAMES.AGENT_PROMPTS,
       "SELECT * FROM c WHERE c.id = @id",
       [{ name: "@id", value: promptId }]
     )
@@ -109,7 +107,7 @@ export async function updatePrompt(
 
     prompt.promptText = promptText
 
-    await updateItem(PROMPT_CONTAINER, promptId, prompt)
+    await updateItem(CONTAINER_NAMES.AGENT_PROMPTS, promptId, prompt)
     return { success: true }
   } catch (error) {
     console.error("Error updating prompt:", error)
@@ -146,7 +144,7 @@ export async function deletePrompt(
       return { success: false, error: "Insufficient permissions" }
     }
 
-    await deleteItem(PROMPT_CONTAINER, promptId)
+    await deleteItem(CONTAINER_NAMES.AGENT_PROMPTS, promptId)
     return { success: true }
   } catch (error) {
     console.error("Error deleting prompt:", error)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import Link from "next/link"
@@ -80,6 +80,11 @@ export default function DashboardPage() {
     }
   }
 
+  const handleSignout = async () => {
+    await signOut()
+    router.push("/auth/signin")
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -103,9 +108,7 @@ export default function DashboardPage() {
             <span className="text-sm text-muted-foreground">
               {session.user?.email} ({session.user?.role})
             </span>
-            <Link href="/auth/signin">
-              <Button variant="outline">Sign Out</Button>
-            </Link>
+            <Button onClick={handleSignout} variant="outline">Sign Out</Button>
           </div>
         </div>
       </header>

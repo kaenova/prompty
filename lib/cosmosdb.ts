@@ -4,6 +4,16 @@ const endpoint = process.env.COSMOS_DB_ENDPOINT || ""
 const key = process.env.COSMOS_DB_KEY || ""
 const databaseId = process.env.COSMOS_DB_DATABASE_ID || "prompty-db"
 
+// Container name constants
+export const CONTAINER_NAMES = {
+  USERS: "users",
+  USER_INVITES: "user_invites",
+  PROJECTS: "projects",
+  AGENTS: "agents",
+  AGENT_PROMPTS: "agent_prompts",
+  PROJECT_API_KEYS: "project_api_keys",
+} as const
+
 // Create Cosmos DB client only if credentials are provided
 let cosmosClient: CosmosClient | null = null
 
@@ -32,6 +42,25 @@ export async function getContainer(containerId: string) {
     partitionKey: { paths: ["/id"] },
   })
   return container
+}
+
+// Initialize all containers
+export async function initializeContainers() {
+  if (!cosmosClient) {
+    throw new Error("CosmosDB client not initialized. Please set COSMOS_DB_ENDPOINT and COSMOS_DB_KEY environment variables.")
+  }
+
+  try {
+    // Initialize all containers
+    const containerIds = Object.values(CONTAINER_NAMES)
+    for (const containerId of containerIds) {
+      await getContainer(containerId)
+    }
+    console.log("All containers initialized successfully")
+  } catch (error) {
+    console.error("Error initializing containers:", error)
+    throw error
+  }
 }
 
 // Helper function to perform database operations

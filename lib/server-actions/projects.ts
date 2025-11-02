@@ -1,10 +1,8 @@
 "use server"
 
-import { queryItems, createItem, updateItem, deleteItem, getContainer } from "@/lib/cosmosdb"
+import { queryItems, createItem, updateItem, deleteItem, getContainer, CONTAINER_NAMES } from "@/lib/cosmosdb"
 import { Project } from "@/types/models"
 import { generateId } from "@/lib/auth"
-
-const PROJECT_CONTAINER = "projects"
 
 /**
  * Create a new project
@@ -25,7 +23,7 @@ export async function createProject(
       createdAt: new Date().toISOString(),
     }
 
-    await createItem(PROJECT_CONTAINER, project)
+    await createItem(CONTAINER_NAMES.PROJECTS, project)
     return { success: true, projectId: project.id }
   } catch (error) {
     console.error("Error creating project:", error)
@@ -39,7 +37,7 @@ export async function createProject(
 export async function getProjectsForUser(userId: string): Promise<Project[]> {
   try {
     const projects = await queryItems<Project>(
-      PROJECT_CONTAINER,
+      CONTAINER_NAMES.PROJECTS,
       "SELECT * FROM c"
     )
     
@@ -57,7 +55,7 @@ export async function getProjectsForUser(userId: string): Promise<Project[]> {
 export async function getProjectById(projectId: string): Promise<Project | null> {
   try {
     const projects = await queryItems<Project>(
-      PROJECT_CONTAINER,
+      CONTAINER_NAMES.PROJECTS,
       "SELECT * FROM c WHERE c.id = @id",
       [{ name: "@id", value: projectId }]
     )
@@ -112,7 +110,7 @@ export async function addUserToProject(
     // Update permissions
     project.permissions[targetUser.id] = permission
 
-    const container = await getContainer(PROJECT_CONTAINER)
+    const container = await getContainer(CONTAINER_NAMES.PROJECTS)
     await container.item(project.id, project.id).replace(project)
 
     return { success: true }
@@ -145,7 +143,7 @@ export async function updateProject(
     if (data.name) project.name = data.name
     if (data.description) project.description = data.description
 
-    await updateItem(PROJECT_CONTAINER, projectId, project)
+    await updateItem(CONTAINER_NAMES.PROJECTS, projectId, project)
     return { success: true }
   } catch (error) {
     console.error("Error updating project:", error)
@@ -167,7 +165,7 @@ export async function deleteProject(
       return { success: false, error: "Only owners can delete project" }
     }
 
-    await deleteItem(PROJECT_CONTAINER, projectId)
+    await deleteItem(CONTAINER_NAMES.PROJECTS, projectId)
     return { success: true }
   } catch (error) {
     console.error("Error deleting project:", error)

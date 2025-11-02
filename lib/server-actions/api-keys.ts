@@ -1,11 +1,9 @@
 "use server"
 
-import { queryItems, createItem, deleteItem } from "@/lib/cosmosdb"
+import { queryItems, createItem, deleteItem, CONTAINER_NAMES } from "@/lib/cosmosdb"
 import { ProjectApiKey } from "@/types/models"
 import { generateApiKey, generateId } from "@/lib/auth"
 import { checkProjectPermission } from "./projects"
-
-const API_KEY_CONTAINER = "project_api_keys"
 
 /**
  * Create a new API key for a project
@@ -30,7 +28,7 @@ export async function createProjectApiKey(
       createdAt: new Date().toISOString(),
     }
 
-    await createItem(API_KEY_CONTAINER, projectApiKey)
+    await createItem(CONTAINER_NAMES.PROJECT_API_KEYS, projectApiKey)
     return { success: true, apiKey }
   } catch (error) {
     console.error("Error creating API key:", error)
@@ -44,7 +42,7 @@ export async function createProjectApiKey(
 export async function getApiKeysForProject(projectId: string): Promise<ProjectApiKey[]> {
   try {
     const apiKeys = await queryItems<ProjectApiKey>(
-      API_KEY_CONTAINER,
+      CONTAINER_NAMES.PROJECT_API_KEYS,
       "SELECT * FROM c WHERE c.projectId = @projectId",
       [{ name: "@projectId", value: projectId }]
     )
@@ -61,7 +59,7 @@ export async function getApiKeysForProject(projectId: string): Promise<ProjectAp
 export async function validateApiKey(apiKey: string): Promise<string | null> {
   try {
     const apiKeys = await queryItems<ProjectApiKey>(
-      API_KEY_CONTAINER,
+      CONTAINER_NAMES.PROJECT_API_KEYS,
       "SELECT * FROM c WHERE c.apiKey = @apiKey",
       [{ name: "@apiKey", value: apiKey }]
     )
@@ -86,7 +84,7 @@ export async function deleteApiKey(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const apiKeys = await queryItems<ProjectApiKey>(
-      API_KEY_CONTAINER,
+      CONTAINER_NAMES.PROJECT_API_KEYS,
       "SELECT * FROM c WHERE c.id = @id",
       [{ name: "@id", value: apiKeyId }]
     )
@@ -103,7 +101,7 @@ export async function deleteApiKey(
       return { success: false, error: "Insufficient permissions" }
     }
 
-    await deleteItem(API_KEY_CONTAINER, apiKeyId)
+    await deleteItem(CONTAINER_NAMES.PROJECT_API_KEYS, apiKeyId)
     return { success: true }
   } catch (error) {
     console.error("Error deleting API key:", error)

@@ -64,12 +64,6 @@ export default function AgentPage() {
       setPrompts(agentPrompts)
       setPermission(userPermission)
       setLoading(false)
-
-      // Select first prompt if available
-      if (agentPrompts.length > 0 && !selectedPrompt) {
-        setSelectedPrompt(agentPrompts[0])
-        setPromptText(agentPrompts[0].promptText)
-      }
     }
 
     if (session) {
@@ -85,8 +79,8 @@ export default function AgentPage() {
 
   const handleNewPrompt = () => {
     setSelectedPrompt(null)
-    setPromptText("")
     setIsNewPrompt(true)
+    setPromptText("")
   }
 
   const handleSavePrompt = async () => {
@@ -216,7 +210,7 @@ export default function AgentPage() {
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold">Prompts</h3>
                 {canEdit && (
-                  <Button size="sm" onClick={handleNewPrompt}>
+                  <Button type="button" size="sm" onClick={handleNewPrompt}>
                     New
                   </Button>
                 )}

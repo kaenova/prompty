@@ -1,11 +1,9 @@
 "use server"
 
-import { queryItems, createItem, updateItem, deleteItem } from "@/lib/cosmosdb"
+import { queryItems, createItem, updateItem, deleteItem, CONTAINER_NAMES } from "@/lib/cosmosdb"
 import { Agent } from "@/types/models"
 import { generateId } from "@/lib/auth"
 import { checkProjectPermission } from "./projects"
-
-const AGENT_CONTAINER = "agents"
 
 /**
  * Create a new agent
@@ -32,7 +30,7 @@ export async function createAgent(
       createdAt: new Date().toISOString(),
     }
 
-    await createItem(AGENT_CONTAINER, agent)
+    await createItem(CONTAINER_NAMES.AGENTS, agent)
     return { success: true, agentId: agent.id }
   } catch (error) {
     console.error("Error creating agent:", error)
@@ -46,7 +44,7 @@ export async function createAgent(
 export async function getAgentsForProject(projectId: string): Promise<Agent[]> {
   try {
     const agents = await queryItems<Agent>(
-      AGENT_CONTAINER,
+      CONTAINER_NAMES.AGENTS,
       "SELECT * FROM c WHERE c.projectId = @projectId",
       [{ name: "@projectId", value: projectId }]
     )
@@ -63,7 +61,7 @@ export async function getAgentsForProject(projectId: string): Promise<Agent[]> {
 export async function getAgentById(agentId: string): Promise<Agent | null> {
   try {
     const agents = await queryItems<Agent>(
-      AGENT_CONTAINER,
+      CONTAINER_NAMES.AGENTS,
       "SELECT * FROM c WHERE c.id = @id",
       [{ name: "@id", value: agentId }]
     )
@@ -83,7 +81,7 @@ export async function getAgentByName(
 ): Promise<Agent | null> {
   try {
     const agents = await queryItems<Agent>(
-      AGENT_CONTAINER,
+      CONTAINER_NAMES.AGENTS,
       "SELECT * FROM c WHERE c.projectId = @projectId AND c.name = @name",
       [
         { name: "@projectId", value: projectId },
@@ -120,7 +118,7 @@ export async function updateAgent(
     if (data.name) agent.name = data.name
     if (data.description) agent.description = data.description
 
-    await updateItem(AGENT_CONTAINER, agentId, agent)
+    await updateItem(CONTAINER_NAMES.AGENTS, agentId, agent)
     return { success: true }
   } catch (error) {
     console.error("Error updating agent:", error)
@@ -147,7 +145,7 @@ export async function deleteAgent(
       return { success: false, error: "Insufficient permissions" }
     }
 
-    await deleteItem(AGENT_CONTAINER, agentId)
+    await deleteItem(CONTAINER_NAMES.AGENTS, agentId)
     return { success: true }
   } catch (error) {
     console.error("Error deleting agent:", error)
@@ -177,7 +175,7 @@ export async function setActivePrompt(
 
     agent.activeAgentPromptId = promptId
 
-    await updateItem(AGENT_CONTAINER, agentId, agent)
+    await updateItem(CONTAINER_NAMES.AGENTS, agentId, agent)
     return { success: true }
   } catch (error) {
     console.error("Error setting active prompt:", error)

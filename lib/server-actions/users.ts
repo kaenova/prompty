@@ -1,18 +1,15 @@
 "use server"
 
-import { getContainer, queryItems, createItem } from "@/lib/cosmosdb"
+import { getContainer, queryItems, createItem, CONTAINER_NAMES } from "@/lib/cosmosdb"
 import { User, UserInvite } from "@/types/models"
 import { hashPassword, generateToken, generateId } from "@/lib/auth"
-
-const USER_CONTAINER = "users"
-const INVITE_CONTAINER = "user_invites"
 
 /**
  * Check if any users exist in the system
  */
 export async function checkUsersExist(): Promise<boolean> {
   try {
-    const users = await queryItems<User>(USER_CONTAINER, "SELECT TOP 1 * FROM c")
+    const users = await queryItems<User>(CONTAINER_NAMES.USERS, "SELECT TOP 1 * FROM c")
     return users.length > 0
   } catch (error) {
     console.error("Error checking users:", error)
@@ -45,7 +42,7 @@ export async function initializeAdmin(data: {
       createdAt: new Date().toISOString(),
     }
 
-    await createItem(USER_CONTAINER, user)
+    await createItem(CONTAINER_NAMES.USERS, user)
     return { success: true }
   } catch (error) {
     console.error("Error initializing admin:", error)
@@ -74,7 +71,7 @@ export async function createUserInvite(
       used: false,
     }
 
-    await createItem(INVITE_CONTAINER, invite)
+    await createItem(CONTAINER_NAMES.USER_INVITES, invite)
     return { success: true, token }
   } catch (error) {
     console.error("Error creating invite:", error)
@@ -90,7 +87,7 @@ export async function getInviteByToken(
 ): Promise<UserInvite | null> {
   try {
     const invites = await queryItems<UserInvite>(
-      INVITE_CONTAINER,
+      CONTAINER_NAMES.USER_INVITES,
       "SELECT * FROM c WHERE c.token = @token AND c.used = false",
       [{ name: "@token", value: token }]
     )
@@ -130,7 +127,7 @@ export async function acceptInvite(
 
     // Check if email already exists
     const existingUsers = await queryItems<User>(
-      USER_CONTAINER,
+      CONTAINER_NAMES.USERS,
       "SELECT * FROM c WHERE c.email = @email",
       [{ name: "@email", value: email }]
     )
@@ -149,10 +146,10 @@ export async function acceptInvite(
       createdAt: new Date().toISOString(),
     }
 
-    await createItem(USER_CONTAINER, user)
+    await createItem(CONTAINER_NAMES.USERS, user)
 
     // Mark invite as used
-    const container = await getContainer(INVITE_CONTAINER)
+    const container = await getContainer(CONTAINER_NAMES.USER_INVITES)
     await container.item(invite.id, invite.id).replace({
       ...invite,
       used: true,
@@ -171,7 +168,7 @@ export async function acceptInvite(
 export async function getUserByEmail(email: string): Promise<User | null> {
   try {
     const users = await queryItems<User>(
-      USER_CONTAINER,
+      CONTAINER_NAMES.USERS,
       "SELECT * FROM c WHERE c.email = @email",
       [{ name: "@email", value: email }]
     )
@@ -187,7 +184,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
  */
 export async function getAllUsers(): Promise<User[]> {
   try {
-    const users = await queryItems<User>(USER_CONTAINER, "SELECT * FROM c")
+    const users = await queryItems<User>(CONTAINER_NAMES.USERS, "SELECT * FROM c")
     // Don't return passwords
     return users.map(u => ({ ...u, password: "" }))
   } catch (error) {
