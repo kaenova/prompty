@@ -160,6 +160,23 @@ export default function DashboardPage() {
             </Button>
           </div>
 
+          {/* Introduction Section */}
+          <div className="p-4 border border-border bg-card rounded-lg">
+            <h3 className="font-semibold text-foreground mb-2">What are Projects?</h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              <span className="font-medium text-foreground">Projects</span> are containers for organizing your agents and prompts. Each project can contain multiple agents that work together to accomplish specific tasks.
+            </p>
+            <p className="text-sm text-muted-foreground mb-3">
+              Within each project, you can:
+            </p>
+            <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+              <li><span className="font-medium text-foreground">Create Agents</span> - Define AI entities with specific behaviors</li>
+              <li><span className="font-medium text-foreground">Manage Prompts</span> - Write and version instructions for your agents</li>
+              <li><span className="font-medium text-foreground">Generate API Keys</span> - Integrate with your applications</li>
+              <li><span className="font-medium text-foreground">Invite Members</span> - Collaborate with your team</li>
+            </ul>
+          </div>
+
           {/* New Project Form */}
           {showNewProject && (
             <div className="p-6 border rounded-lg space-y-4 bg-card">

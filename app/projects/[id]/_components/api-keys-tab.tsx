@@ -95,7 +95,8 @@ response = openai.ChatCompletion.create(
       </div>
 
       {canEdit && (
-        <Button 
+        <Button  
+          className="w-full"
           onClick={handleCreateApiKey}
           disabled={isCreating}
         >

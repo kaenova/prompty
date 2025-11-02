@@ -8,7 +8,7 @@ import {
   updateMemberPermission,
   removeMemberFromProject
 } from "@/lib/server-actions/projects"
-import { getUserById } from "@/lib/server-actions/users"
+import { getUserById, getAllUsers } from "@/lib/server-actions/users"
 import { Project } from "@/types/models"
 
 interface SettingsTabProps {
@@ -36,6 +36,9 @@ export function SettingsTab({
   const [loadingNames, setLoadingNames] = useState(true)
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null)
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
+  const [allUsers, setAllUsers] = useState<{ id: string; email: string; name: string }[]>([])
+  const [emailRecommendations, setEmailRecommendations] = useState<{ id: string; email: string; name: string }[]>([])
+  const [showRecommendations, setShowRecommendations] = useState(false)
 
   // Fetch user names for all project members
   useEffect(() => {
@@ -58,6 +61,40 @@ export function SettingsTab({
 
     fetchUserNames()
   }, [project.permissions])
+
+  // Fetch all users for recommendations
+  useEffect(() => {
+    const loadAllUsers = async () => {
+      const users = await getAllUsers()
+      setAllUsers(users)
+    }
+    if (showAddUser) {
+      loadAllUsers()
+    }
+  }, [showAddUser])
+
+  const handleEmailChange = (value: string) => {
+    setAddUserData({ ...addUserData, email: value })
+    
+    if (value.trim()) {
+      const filtered = allUsers.filter(
+        (user) => 
+          !Object.keys(project.permissions).includes(user.id) &&
+          (user.email.toLowerCase().includes(value.toLowerCase()) ||
+           user.name.toLowerCase().includes(value.toLowerCase()))
+      )
+      setEmailRecommendations(filtered)
+      setShowRecommendations(true)
+    } else {
+      setEmailRecommendations([])
+      setShowRecommendations(false)
+    }
+  }
+
+  const handleSelectEmail = (email: string) => {
+    setAddUserData({ ...addUserData, email })
+    setShowRecommendations(false)
+  }
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -145,18 +182,38 @@ export function SettingsTab({
               <form onSubmit={handleAddUser} className="space-y-4 mt-4">
                 <div>
                   <label className="text-sm font-medium">User Email</label>
-                  <input
-                    type="email"
-                    value={addUserData.email}
-                    onChange={(e) =>
-                      setAddUserData({
-                        ...addUserData,
-                        email: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border rounded-md bg-background mt-1"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={addUserData.email}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      onFocus={() => {
+                        if (addUserData.email.trim()) {
+                          setShowRecommendations(true)
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setShowRecommendations(false), 200)
+                      }}
+                      className="w-full px-3 py-2 border rounded-md bg-background mt-1"
+                      placeholder="Type email address..."
+                      required
+                    />
+                    {showRecommendations && emailRecommendations.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-md z-10">
+                        {emailRecommendations.map((user) => (
+                          <div
+                            key={user.id}
+                            onClick={() => handleSelectEmail(user.email)}
+                            className="px-3 py-2 hover:bg-muted cursor-pointer text-sm border-b last:border-b-0"
+                          >
+                            <div className="font-medium">{user.email}</div>
+                            <div className="text-xs text-muted-foreground">{user.name}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Permission</label>

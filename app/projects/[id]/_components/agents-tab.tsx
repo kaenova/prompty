@@ -61,8 +61,22 @@ export function AgentsTab({
 
   return (
     <div className="space-y-4">
+      {/* Introduction Section */}
+      <div className="p-4 border border-border bg-card rounded-lg">
+        <h3 className="font-semibold text-foreground mb-2">What are Agents and Prompts?</h3>
+        <p className="text-sm text-muted-foreground mb-3">
+          <span className="font-medium text-foreground">Agents</span> are AI-powered entities that perform specific tasks. Each agent has a unique identity and behavior defined by its assigned <span className="font-medium text-foreground">prompts</span>.
+        </p>
+        <p className="text-sm text-muted-foreground mb-3">
+          <span className="font-medium text-foreground">Prompts</span> are instructions and context that guide how an agent behaves. You can create multiple prompts for an agent and activate the one you want to use. Only one prompt can be active at a time.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          To get started, create an agent below and then add prompts to define its behavior.
+        </p>
+      </div>
+
       {canEdit && (
-        <Button onClick={() => setShowNewAgent(true)}>
+        <Button className="w-full" onClick={() => setShowNewAgent(true)}>
           New Agent
         </Button>
       )}
