@@ -204,10 +204,24 @@ export default function AgentPage() {
             <p className="text-muted-foreground">{agent.description}</p>
           </div>
 
+          {!agent.activeAgentPromptId && (
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-start gap-3">
+              <div className="text-yellow-600 dark:text-yellow-500 text-lg flex-shrink-0">⚠️</div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                  No Active Prompt
+                </p>
+                <p className="text-xs text-yellow-800 dark:text-yellow-200 mt-1">
+                  This agent doesn&apos;t have an active prompt yet. Create or select a prompt and activate it to use this agent.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-300px)]">
             {/* Left: Prompt List */}
-            <div className="border rounded-lg p-4 space-y-4 overflow-y-auto">
-              <div className="flex justify-between items-center">
+            <div className="border rounded-lg p-4 pt-0 space-y-4 overflow-y-auto">
+              <div className="flex justify-between items-center sticky top-0 bg-background pb-4 pt-4">
                 <h3 className="font-semibold">Prompts</h3>
                 {canEdit && (
                   <Button type="button" size="sm" onClick={handleNewPrompt}>
@@ -366,6 +380,57 @@ response = openai.ChatCompletion.create(
               <p className="text-xs text-muted-foreground">
                 📦 Install SDK: <code className="bg-muted border border-border px-1.5 py-0.5 rounded text-foreground">pip install kaenova-prompty</code>
               </p>
+            </div>
+          </div>
+
+          {/* Python Format Example */}
+          <div className="p-4 border border-border bg-card rounded-lg">
+            <h3 className="font-semibold text-foreground mb-3">Using .format() with Prompts</h3>
+            
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Example of using Python&apos;s <code className="bg-muted border border-border px-1.5 py-0.5 rounded text-foreground">.format()</code> method to inject variables into your prompt:
+              </p>
+              <pre className="bg-muted text-foreground p-3 rounded text-xs overflow-x-auto border border-border">
+                <code>{`from prompty import PromptyClient
+import openai
+
+# Initialize the client
+client = PromptyClient(
+    base_url='${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}',
+    project_id='${projectId}',
+    api_key='pk_your_api_key_here'
+)
+
+# Fetch the base prompt
+base_prompt = client.get_prompt('${agent.name}')
+
+# Example prompt template in your agent:
+# "You are a {language} tutor for {name}. 
+#  Help the student understand {topic} concepts clearly.
+
+# Use .format() to inject variables into the prompt
+# Assuming your prompt contains placeholders like {name}, {topic}, etc.
+context = {
+    'name': 'Alice',
+    'topic': 'Machine Learning',
+    'language': 'Python'
+}
+
+system_prompt = base_prompt.format(**context)
+
+# Send to OpenAI
+response = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": "Can you explain the basics?"}
+    ]
+)
+
+print(response.choices[0].message.content)
+"`}</code>
+              </pre>
             </div>
           </div>
         </div>
